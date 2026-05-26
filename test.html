@@ -6,7 +6,7 @@
   <title>Тест</title>
   <link rel="stylesheet" href="./style.css" />
   <script>
-    let id = new URLSearchParams(location.search).get('id')
+    let id_ = new URLSearchParams(location.search).get('id')
     let themes = new URLSearchParams(location.search).get('themes')
     let totalCount = parseInt(new URLSearchParams(location.search).get('count')) || 10
     let questionsPool = []
@@ -103,7 +103,7 @@
     }
 
     window.onload = () => {
-      fetch('./' + id + '.json')
+      fetch('./' + id_ + '.json')
         .then(res => res.json())
         .then(data => {
           let filtered = data
@@ -140,7 +140,7 @@
     <p id="stats">Правильных: 0 из 0</p>
     <progress id="progressBar" value="0" max="1"></progress>
     <button id="restartBtn" onclick="restartTest()">Повторить</button>
-    <button id="quitBtn" onclick="location.href='./subject.html?id=' + id">Выйти</button>
+    <button id="quitBtn" onclick="location.href='./subject.html?id=' + id_">Выйти</button>
   </div>
 </body>
 </html>
