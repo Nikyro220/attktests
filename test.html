@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Тест</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script>
+    let id = new URLSearchParams(location.search).get('id')
+    let themes = new URLSearchParams(location.search).get('themes')
+    let totalCount = parseInt(new URLSearchParams(location.search).get('count')) || 10
+    let questionsPool = []
+    let allQuestions = []
+    let correctAnswer = ''
+    let correctCount = 0
+    let totalAnswered = 0
+
+    function loadNextFromPool() {
+      if (questionsPool.length === 0) {
+        if (totalCount >= 999999) {
+          questionsPool = [...allQuestions].sort(() => Math.random() - 0.5)
+        } else {
+          document.getElementById('question').textContent = 'Тест завершён'
+          document.getElementById('answers').innerHTML = ''
+          return
+        }
+      }
+
+      const q = questionsPool.pop()
+      correctAnswer = q.correct || q.answer || q.answers[0]
+      document.getElementById('question').textContent = q.question
+      const answersDiv = document.getElementById('answers')
+      answersDiv.innerHTML = ''
+
+      const shuffledAnswers = [...q.answers].sort(() => Math.random() - 0.5)
+      for (let a of shuffledAnswers) {
+        const label = document.createElement('label')
+        label.setAttribute('data-answer', a)
+        label.className = 'answer-btn'
+        label.textContent = a
+        label.addEventListener('click', () => pickAnswer(a))
+        answersDiv.appendChild(label)
+      }
+    }
+
+    function pickAnswer(chosen) {
+      const allLabels = document.querySelectorAll('#answers label')
+      allLabels.forEach(label => label.classList.add('disabled'))
+      allLabels.forEach(label => {
+        const val = label.getAttribute('data-answer')
+        if (val === correctAnswer) label.classList.add('correct')
+        if (val === chosen && val !== correctAnswer) label.classList.add('wrong')
+      })
+      totalAnswered++
+      if (chosen === correctAnswer) correctCount++
+      updateStats()
+      setTimeout(loadNextFromPool, 1000)
+    }
+
+    function animateProgressBarLerp(progressBar, targetRatio, alpha = 0.15) {
+      let currentRatio = (progressBar.value || 0) / progressBar.max
+      function animate() {
+        currentRatio = currentRatio + (targetRatio - currentRatio) * alpha
+        progressBar.value = currentRatio * progressBar.max
+        if (Math.abs(currentRatio - targetRatio) > 0.005) {
+          requestAnimationFrame(animate)
+        } else {
+          progressBar.value = targetRatio * progressBar.max
+        }
+      }
+      animate()
+    }
+
+    function updateStats() {
+      const progressBar = document.getElementById('progressBar')
+      const pct = totalAnswered === 0 ? 0 : Math.round(correctCount / totalAnswered * 100)
+      progressBar.max = 1
+      if (totalCount >= 999999) {
+        const wrongCount = totalAnswered - correctCount
+        animateProgressBarLerp(progressBar, totalAnswered === 0 ? 0 : correctCount / totalAnswered, 0.15)
+        document.getElementById('stats').textContent = `${correctCount} правильных, ${wrongCount} неправильных (${pct}%)`
+      } else {
+        animateProgressBarLerp(progressBar, totalAnswered / totalCount, 0.15)
+        document.getElementById('stats').textContent = `${totalAnswered} из ${totalCount} — ${pct}% правильных`
+      }
+    }
+
+    function restartTest() {
+      correctCount = 0
+      totalAnswered = 0
+      if (totalCount >= 999999) {
+        questionsPool = [...allQuestions].sort(() => Math.random() - 0.5)
+      } else {
+        questionsPool = []
+        while (questionsPool.length < totalCount) {
+          const shuffled = [...allQuestions].sort(() => Math.random() - 0.5)
+          questionsPool.push(...shuffled)
+        }
+        questionsPool = questionsPool.slice(0, totalCount)
+      }
+      updateStats()
+      loadNextFromPool()
+    }
+
+    window.onload = () => {
+      fetch('./' + id + '.json')
+        .then(res => res.json())
+        .then(data => {
+          let filtered = data
+          if (themes && themes !== 'all') {
+            const selectedThemes = new Set(themes.split(','))
+            filtered = data.filter(q => selectedThemes.has(q.type))
+          }
+          for (let i = filtered.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [filtered[i], filtered[j]] = [filtered[j], filtered[i]]
+          }
+          allQuestions = filtered
+          if (totalCount >= 999999) {
+            questionsPool = [...allQuestions].sort(() => Math.random() - 0.5)
+          } else {
+            questionsPool = []
+            while (questionsPool.length < totalCount) {
+              const shuffled = [...allQuestions].sort(() => Math.random() - 0.5)
+              questionsPool.push(...shuffled)
+            }
+            questionsPool = questionsPool.slice(0, totalCount)
+          }
+          updateStats()
+          loadNextFromPool()
+        })
+    }
+  </script>
+</head>
+<body>
+  <div class="centered">
+    <h1 id="question">Загрузка...</h1>
+    <div id="answers"></div>
+    <p id="result"></p>
+    <p id="stats">Правильных: 0 из 0</p>
+    <progress id="progressBar" value="0" max="1"></progress>
+    <button id="restartBtn" onclick="restartTest()">Повторить</button>
+    <button id="quitBtn" onclick="location.href='./subject.html'">Выйти</button>
+  </div>
+</body>
+</html>

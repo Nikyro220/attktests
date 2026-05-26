@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Типы тестов</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+	<form id="testForm" class="centered">
+		<h1>Выберите темы:</h1>
+		<div id="subjects">
+			<div onclick="toggleCheckbox(this, event)">
+				<input type="checkbox" name="types" value="all">
+				<span>все темы</span>
+			</div>
+		</div>
+		<label>Количество вопросов:
+			<div style="display: flex; gap: 0.5em;">
+				<select id="countSelect">
+					<option value="15">15</option>
+					<option value="30" selected>30</option>
+					<option value="60">60</option>
+					<option value="90">90</option>
+					<option value="custom">Другое...</option>
+					<option value="∞">∞</option>
+				</select>
+				<input type="number" id="customCount" min="1" max="300" style="display: none;">
+			</div>
+		</label>
+		<button type="submit" class="type">Начать тест</button>
+	</form>
+
+	<script>
+		function toggleCheckbox(div, event) {
+			if (event.target.type === 'checkbox') return;
+			const cb = div.querySelector('input[type="checkbox"]');
+			cb.checked = !cb.checked;
+			cb.dispatchEvent(new Event('change', { bubbles: true }));
+		}
+
+		document.addEventListener('DOMContentLoaded', () => {
+			const params = new URLSearchParams(window.location.search);
+			const id = params.get('id');
+			const storageKey = 'subjects_' + id;
+
+			function saveState() {
+				const checked = Array.from(document.querySelectorAll('input[name="types"]:checked'))
+					.map(cb => cb.value);
+				const countVal = document.getElementById('countSelect').value;
+				const customVal = document.getElementById('customCount').value;
+				localStorage.setItem(storageKey, JSON.stringify({ checked, countVal, customVal }));
+			}
+
+			function restoreCount() {
+				const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+				const countSelect = document.getElementById('countSelect');
+				const customInput = document.getElementById('customCount');
+				if (saved) {
+					countSelect.value = saved.countVal;
+					if (saved.countVal === 'custom') {
+						customInput.style.display = 'block';
+						customInput.value = saved.customVal;
+					}
+				} else if (countSelect.value === 'custom') {
+					customInput.style.display = 'block';
+				}
+			}
+
+			restoreCount();
+
+			fetch("./" + id + ".json")
+				.then(response => response.json())
+				.then(json => {
+					let unique_subjects = {};
+					json.forEach(e => {
+						if (!unique_subjects[e.type]) unique_subjects[e.type] = {type: e.type, count: 1}
+						else unique_subjects[e.type].count += 1
+					})
+					const subjects = document.getElementById("subjects")
+					Object.values(unique_subjects).forEach(element => {
+						subjects.innerHTML += `
+							<div onclick="toggleCheckbox(this, event)">
+								<input type="checkbox" name="types" value="${element.type}">
+								<span>${element.type} (${element.count} вопросов)</span>
+							</div>`
+					});
+
+					const allCheckbox = document.querySelector('input[name="types"][value="all"]');
+					const otherCheckboxes = Array.from(document.querySelectorAll('input[name="types"]:not([value="all"])'));
+
+					// восстановить выбранные темы
+					const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
+					if (saved && saved.checked) {
+						const savedSet = new Set(saved.checked);
+						otherCheckboxes.forEach(cb => cb.checked = savedSet.has(cb.value));
+						allCheckbox.checked = otherCheckboxes.every(cb => cb.checked);
+					} else {
+						allCheckbox.checked = true;
+						otherCheckboxes.forEach(cb => cb.checked = true);
+					}
+
+					allCheckbox.addEventListener('change', () => {
+						otherCheckboxes.forEach(cb => cb.checked = allCheckbox.checked);
+						saveState();
+					});
+
+					otherCheckboxes.forEach(cb => {
+						cb.addEventListener('change', () => {
+							if (!cb.checked) allCheckbox.checked = false;
+							else if (otherCheckboxes.every(ch => ch.checked)) allCheckbox.checked = true;
+							saveState();
+						});
+					});
+				})
+				.catch(error => console.error('Ошибка:', error));
+
+			document.getElementById('countSelect').addEventListener('change', (e) => {
+				const customInput = document.getElementById('customCount');
+				if (e.target.value === 'custom') {
+					customInput.style.display = 'block';
+					customInput.focus();
+				} else {
+					customInput.style.display = 'none';
+				}
+				saveState();
+			});
+
+			document.getElementById('customCount').addEventListener('input', saveState);
+
+			document.getElementById('testForm').addEventListener('submit', (e) => {
+				e.preventDefault();
+				saveState();
+
+				const allCheckbox = document.querySelector('input[name="types"][value="all"]');
+				let themes = 'all';
+
+				if (!allCheckbox.checked) {
+					themes = Array.from(document.querySelectorAll('input[name="types"]:checked'))
+						.map(cb => cb.value)
+						.filter(v => v !== 'all')
+						.join(',');
+				}
+
+				const countSelect = document.getElementById('countSelect');
+				const count = countSelect.value === 'custom'
+					? document.getElementById('customCount').value
+					: (countSelect.value === '\u221e' ? '999999' : countSelect.value);
+
+				const p = new URLSearchParams({ id, count, themes });
+				window.location.href = './test.html?' + p.toString();
+			});
+		});
+	</script>
+</body>
+</html>
