@@ -7,29 +7,33 @@
 	<link rel="stylesheet" href="./style.css">
 </head>
 <body>
-	<form id="testForm" class="centered">
-		<h1>Выберите темы:</h1>
-		<div id="subjects">
-			<div onclick="toggleCheckbox(this, event)">
-				<input type="checkbox" name="types" value="all">
-				<span>все темы</span>
+	<div class="centered">
+		<form id="testForm">
+			<h1>Выберите темы:</h1>
+			<div id="subjects">
+				<div onclick="toggleCheckbox(this, event)">
+					<input type="checkbox" name="types" value="all">
+					<span>все темы</span>
+				</div>
 			</div>
-		</div>
-		<label>Количество вопросов:
-			<div style="display: flex; gap: 0.5em;">
-				<select id="countSelect">
-					<option value="15">15</option>
-					<option value="30" selected>30</option>
-					<option value="60">60</option>
-					<option value="90">90</option>
-					<option value="custom">Другое...</option>
-					<option value="∞">∞</option>
-				</select>
-				<input type="number" id="customCount" min="1" max="300" style="display: none;">
-			</div>
-		</label>
-		<button type="submit" class="type">Начать тест</button>
-	</form>
+			<label>Количество вопросов:
+				<div style="display: flex; gap: 0.5em;">
+					<select id="countSelect">
+						<option value="15">15</option>
+						<option value="30" selected>30</option>
+						<option value="60">60</option>
+						<option value="90">90</option>
+						<option value="custom">Другое...</option>
+						<option value="∞">∞</option>
+					</select>
+					<input type="number" id="customCount" min="1" max="300" style="display: none;">
+				</div>
+			</label>
+			<button type="submit" class="type">Начать тест</button>
+		</form>
+		<button class="type" onclick="location.href='./index.html'">Выйти в меню</button>
+	</div>
+
 
 	<script>
 		function toggleCheckbox(div, event) {
