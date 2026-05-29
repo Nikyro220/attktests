@@ -269,6 +269,15 @@ button {
     background-color: hsla(var(--primary-hue), 40%, 52%, 1);
 }
 
+#wrongBtn {
+    background-color: hsla(var(--primary-hue), 40%, 45%, 1);
+    color: var(--text-color);
+}
+
+#wrongBtn:hover {
+    background-color: hsla(var(--primary-hue), 40%, 52%, 1);
+}
+
 #quitBtn {
     background-color: var(--element-color);
     color: var(--text-color);
@@ -329,4 +338,8 @@ label.answer-btn.wrong {
     background-color: hsl(var(--wrong-hue), var(--wrong-saturation), var(--wrong-bg-lightness));
     border-color: hsl(var(--wrong-hue), var(--wrong-saturation), var(--wrong-border-lightness));
     color: hsl(var(--wrong-hue), var(--wrong-saturation), var(--wrong-text-lightness));
+}
+
+button.type {
+    margin-top: 1em;
 }

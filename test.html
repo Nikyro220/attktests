@@ -64,7 +64,8 @@
         document.getElementById('wrongBtn').style.display = 'inline-block'
       }
       updateStats()
-      setTimeout(loadNextFromPool, 1000)
+      const delay = localStorage.getItem('fastMode') === 'true' ? 700 : 3000
+      setTimeout(loadNextFromPool, delay)
     }
 
     function animateProgressBarLerp(progressBar, targetRatio, alpha = 0.15) {
@@ -119,7 +120,7 @@
       if (wrongQuestions.length === 0) return
       correctCount = 0
       totalAnswered = 0
-      totalCount = wrongQuestions.length  // ← ровно столько, сколько было ошибок
+      totalCount = wrongQuestions.length
       allQuestions = [...wrongQuestions]
       wrongQuestions = []
       document.getElementById('wrongBtn').style.display = 'none'
@@ -129,6 +130,9 @@
     }
 
     window.onload = () => {
+      const cb = document.getElementById('fastMode')
+      if (cb) cb.checked = localStorage.getItem('fastMode') === 'true'
+
       fetch('./' + id_ + '.json')
         .then(res => res.json())
         .then(data => {
@@ -165,6 +169,10 @@
     <p id="result"></p>
     <p id="stats">Правильных: 0 из 0</p>
     <progress id="progressBar" value="0" max="1"></progress>
+    <label style="display:inline-flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;">
+      <input type="checkbox" id="fastMode" onchange="localStorage.setItem('fastMode', this.checked)">
+      Быстрее показывать новый вопрос
+    </label>
     <button id="restartBtn" onclick="restartTest()">Повторить</button>
     <button id="wrongBtn" onclick="restartWrong()" style="display:none">Повторить проблемные вопросы</button>
     <button id="quitBtn" onclick="location.href='./subject.html?id=' + id_">Выйти</button>
