@@ -52,6 +52,15 @@ body {
     box-sizing: border-box;
 }
 
+#theme {
+    font-size: 0.95em;
+    font-weight: 400;
+    text-align: center;
+    color: hsla(var(--primary-hue), 30%, calc(75% * var(--text-brightness)), 0.75);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
 .centered {
     background-color: var(--container-color);
     width: 100%;
