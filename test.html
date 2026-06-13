@@ -118,7 +118,7 @@
         const wrongCount = totalAnswered - correctCount
         animateProgressBarLerp(progressBar, totalAnswered === 0 ? 0 : correctCount / totalAnswered, 0.15)
         document.getElementById('stats').textContent =
-          `Всего ${totalAnswered}, Правильных ${correctCount}, Неправильных ${wrongCount}`
+          `Всего ${totalAnswered}, Правильных ${correctCount}, Неправильных ${wrongCount}, Точность ${pct}%`
       } else {
         animateProgressBarLerp(progressBar, totalAnswered / totalCount, 0.15)
         document.getElementById('stats').textContent =
