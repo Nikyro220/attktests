@@ -32,6 +32,19 @@
     --wrong-text-lightness: 82%;
 }
 
+#seedBadge {
+    position: fixed;
+    top: 4px;
+    left: 6px;
+    font-size: 20px;
+    line-height: 1;
+    color: rgba(128, 128, 128, 0.35);
+    font-family: monospace;
+    user-select: none;
+    pointer-events: none;
+    z-index: 9999;
+}
+
 @font-face {
     font-family: 'lib';
     src: url('libe.ttf') format('truetype');
