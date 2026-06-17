@@ -45,6 +45,19 @@
     z-index: 9999;
 }
 
+version {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+    font-size: 20px;
+    line-height: 1;
+    color: rgba(128, 128, 128, 0.35);
+    font-family: monospace;
+    user-select: none;
+    pointer-events: none;
+    z-index: 9999;
+}
+
 @font-face {
     font-family: 'lib';
     src: url('libe.ttf') format('truetype');
