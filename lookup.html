@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Поиск</title>
+  <link rel="stylesheet" href="./style.css" />
+  <style>
+    body {
+      align-items: flex-start;
+      padding: 0;
+    }
+
+    .lookup-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75em;
+      height: 100vh;
+      max-height: 100vh;
+      padding: 1em;
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    .search-bar {
+      background-color: var(--element-color);
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      padding: 0.75em 1em;
+      font-family: lib, system-ui, sans-serif;
+      font-size: 1em;
+      color: var(--text-color);
+      width: 100%;
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .search-bar:focus {
+      border-color: var(--accent-color);
+    }
+
+    .search-bar::placeholder {
+      color: hsla(var(--primary-hue), 15%, calc(95% * var(--text-brightness)), 0.35);
+    }
+
+    .stats-line {
+      font-size: 0.8em;
+      color: hsla(var(--primary-hue), 15%, calc(95% * var(--text-brightness)), 0.4);
+      text-align: right;
+      flex-shrink: 0;
+      min-height: 1em;
+    }
+
+    .list-wrap {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6em;
+      padding-right: 4px;
+    }
+
+    .list-wrap::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .list-wrap::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .list-wrap::-webkit-scrollbar-thumb {
+      background-color: var(--border-color);
+      border-radius: 2px;
+    }
+
+    .card {
+      background-color: var(--container-color);
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      padding: 1em 1.2em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55em;
+    }
+
+    .card-type {
+      font-size: 0.75em;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: hsla(var(--primary-hue), 30%, calc(75% * var(--text-brightness)), 0.6);
+    }
+
+    .card-question {
+      font-size: 1em;
+      color: var(--accent-color);
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    .card-answers {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3em;
+    }
+
+    .card-answer {
+      font-size: 0.9em;
+      color: var(--text-color);
+      padding: 0.4em 0.75em;
+      background-color: var(--element-color);
+      border: 1px solid var(--border-color);
+      border-radius: 2px;
+      line-height: 1.4;
+    }
+
+    .card-answer.is-correct {
+      border-color: hsl(var(--correct-hue), var(--correct-saturation), var(--correct-border-lightness));
+      color: hsl(var(--correct-hue), var(--correct-saturation), var(--correct-text-lightness));
+      background-color: hsl(var(--correct-hue), var(--correct-saturation), var(--correct-bg-lightness));
+    }
+
+    mark {
+      background-color: hsla(var(--primary-hue), 70%, 60%, 0.35);
+      color: inherit;
+      border-radius: 1px;
+      padding: 0 1px;
+    }
+
+    .no-results {
+      text-align: center;
+      color: hsla(var(--primary-hue), 15%, calc(95% * var(--text-brightness)), 0.4);
+      font-size: 0.95em;
+      padding: 2em 0;
+    }
+  </style>
+  <script>const params = new URLSearchParams(location.search)
+    let id_ = params.get('id')
+    let allQuestions = []
+
+    function getCorrectAnswer(q) {
+      return q.correct || q.answer || q.answers[0]
+    }
+
+    // --- ГЕНЕРАТОР Н-ГРАММ (Дуалы и Триплеты) ---
+    function getNgrams(str, n) {
+      const s = str.toLowerCase().replace(/\s+/g, ' ')
+      const grams = []
+      for (let i = 0; i <= s.length - n; i++) {
+        grams.push(s.slice(i, i + n))
+      }
+      return grams
+    }
+
+    // Подсчет схожести отдельного текста с запросом на основе дуалов и триплетов
+    function fieldScore(text, query) {
+      const t = text.toLowerCase()
+      const q = query.toLowerCase().trim()
+      if (!q) return 0
+
+      let exactBonus = 0
+      if (t.includes(q)) {
+        exactBonus = 1000
+      }
+
+      const qBigrams = getNgrams(q, 2)
+      const qTrigrams = getNgrams(q, 3)
+
+      let bigramMatches = 0
+      for (const gram of qBigrams) {
+        if (t.includes(gram)) bigramMatches++
+      }
+
+      let trigramMatches = 0
+      for (const gram of qTrigrams) {
+        if (t.includes(gram)) trigramMatches++
+      }
+
+      const bigramScore = qBigrams.length ? (bigramMatches / qBigrams.length) : 0
+      const trigramScore = qTrigrams.length ? (trigramMatches / qTrigrams.length) : 0
+
+      const fuzzyScore = (bigramScore * 40) + (trigramScore * 60)
+
+      return exactBonus + fuzzyScore
+    }
+
+    // Полная оценка вопроса с учетом весов полей
+    function scoreQuestion(q, query) {
+      if (!query.trim()) return 0
+
+      const correct = getCorrectAnswer(q)
+
+      const qScore = fieldScore(q.question, query) * 3.0
+      const cScore = fieldScore(correct, query) * 2.0
+
+      let maxWrongScore = 0
+      for (const a of q.answers) {
+        if (a !== correct) {
+          const s = fieldScore(a, query)
+          if (s > maxWrongScore) maxWrongScore = s
+        }
+      }
+
+      return qScore + cScore + maxWrongScore
+    }
+
+    // --- Подсветка с поддержкой измененных окончаний ---
+    function getExactRanges(str, query) {
+      const ranges = []
+      const words = query.toLowerCase().trim().split(/\s+/).filter(Boolean)
+      const lower = str.toLowerCase()
+      
+      for (const word of words) {
+        if (word.length < 2) continue
+        
+        let searchWord = word
+        let idx = 0
+        
+        while (searchWord.length >= 3 && lower.indexOf(searchWord) === -1) {
+          searchWord = searchWord.slice(0, -1)
+        }
+        
+        while ((idx = lower.indexOf(searchWord, idx)) !== -1) {
+          ranges.push([idx, idx + searchWord.length])
+          idx += searchWord.length
+        }
+      }
+      
+      ranges.sort((a, b) => a[0] - b[0])
+      const merged = []
+      for (const r of ranges) {
+        if (merged.length && r[0] <= merged[merged.length - 1][1]) {
+          merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], r[1])
+        } else {
+          merged.push([...r])
+        }
+      }
+      return merged
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    }
+
+    function highlight(str, query) {
+      if (!query.trim()) return escapeHtml(str)
+      const ranges = getExactRanges(str, query)
+      if (ranges.length === 0) return escapeHtml(str)
+      let result = '', pos = 0
+      for (const [start, end] of ranges) {
+        result += escapeHtml(str.slice(pos, start))
+        result += `<mark>${escapeHtml(str.slice(start, end))}</mark>`
+        pos = end
+      }
+      result += escapeHtml(str.slice(pos))
+      return result
+    }
+
+    function renderList(query) {
+      const container = document.getElementById('cardList')
+      const statsEl = document.getElementById('statsLine')
+      container.innerHTML = ''
+
+      const cleanQuery = query.trim().toLowerCase()
+      let items
+      let matchCount = 0
+
+      if (cleanQuery.length === 0) {
+        items = allQuestions
+        matchCount = 0
+        statsEl.textContent = `0 / ${allQuestions.length}`
+      } else {
+        // Считаем баллы релевантности для всех вопросов
+        const scored = allQuestions
+          .map(q => ({ q, score: scoreQuestion(q, query) }))
+          .sort((a, b) => b.score - a.score)
+          
+        items = scored.map(x => x.q)
+        
+        // Считаем, сколько карточек набрали больше 0 баллов (имеют хоть какие-то совпадения)
+        matchCount = scored.filter(x => x.score > 0).length
+        statsEl.textContent = `${matchCount} / ${allQuestions.length}`
+      }
+
+      if (items.length === 0) {
+        container.innerHTML = `<div class="no-results">Ничего не найдено</div>`
+        return
+      }
+
+      const frag = document.createDocumentFragment()
+      for (const q of items) {
+        const correct = getCorrectAnswer(q)
+        const card = document.createElement('div')
+        card.className = 'card'
+
+        let inner = ''
+        if (q.type) inner += `<div class="card-type">${escapeHtml(q.type)}</div>`
+        inner += `<div class="card-question">${highlight(q.question, query)}</div>`
+        inner += `<div class="card-answers">`
+        for (const a of q.answers) {
+          const isCorrect = a === correct
+          inner += `<div class="card-answer${isCorrect ? ' is-correct' : ''}">${highlight(a, query)}</div>`
+        }
+        inner += `</div>`
+        card.innerHTML = inner
+        frag.appendChild(card)
+      }
+      container.appendChild(frag)
+    }
+
+    window.onload = () => {
+      const input = document.getElementById('searchInput')
+
+      fetch('./' + id_ + '.json')
+        .then(res => res.json())
+        .then(data => {
+          data.forEach((q, idx) => { if (q.id === undefined || q.id === null) q.id = idx })
+          allQuestions = data
+          renderList('')
+        })
+
+      let debounceTimer
+      input.addEventListener('input', () => {
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => renderList(input.value), 150)
+      })
+
+      input.focus()
+    }
+  </script>
+</head>
+<body>
+  <version id="versionBadge">v2b9</version>
+  <div class="lookup-wrap">
+    <input
+      type="text"
+      id="searchInput"
+      class="search-bar"
+      placeholder="Поиск по вопросам и ответам..."
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <div class="stats-line" id="statsLine"></div>
+    <div class="list-wrap" id="cardList"></div>
+    <button id="quitBtn" onclick="location.href='./index.html'">Выйти</button>
+  </div>
+</body>
+</html>
