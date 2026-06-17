@@ -12,29 +12,26 @@
     let totalCount = parseInt(params.get('count')) || 10
 
     // --- seed handling ---
-    // id range is 1-300 (test id), seed is a separate int controlling RNG + used as storage key
     let seedParam = params.get('seed')
     let seed = seedParam !== null && seedParam !== '' ? parseInt(seedParam) : Math.floor(Math.random() * 1000000)
     if (!Number.isFinite(seed)) seed = Math.floor(Math.random() * 1000000)
 
-    // Lock the seed into the URL. Without this, a plain page reload (F5) carries
-    // no "seed" param, so the line above would pick a brand-new random seed every
-    // time -> STORAGE_KEY changes on every reload -> saved progress can never be found.
     if (seedParam === null || seedParam === '') {
       params.set('seed', seed)
       history.replaceState(null, '', `${location.pathname}?${params.toString()}`)
     }
 
     let questionsPool = []
-    let allQuestions = []      // full theme-filtered set, never mutated after load
-    let baseQuestions = []     // pool restartTest() should always rebuild from
-    let dataById = new Map()   // id -> question, built from the *unfiltered* dataset
+    let allQuestions = []
+    let baseQuestions = []
+    let dataById = new Map()
     let correctAnswer = ''
     let currentQuestion = null
     let wrongQuestions = []
     let correctCount = 0
     let totalAnswered = 0
     let usingWrongPool = false
+    let awaitingNext = false   // флаг: ответ уже дан, ждём следующего вопроса
 
     const STORAGE_KEY = `quizState:${id_}:${seed}`
 
@@ -139,9 +136,13 @@
         updateWrongBtn()
       }
       updateStats()
+      awaitingNext = true   // ответ дан — при перезагрузке сразу следующий
       saveState()
       const delay = localStorage.getItem('fastMode') === 'true' ? 700 : 3000
-      setTimeout(loadNextFromPool, delay)
+      setTimeout(() => {
+        awaitingNext = false
+        loadNextFromPool()
+      }, delay)
     }
 
     function animateProgressBarLerp(progressBar, targetRatio, alpha = 0.15) {
@@ -191,13 +192,12 @@
       badge.textContent = `S${seed}Q${totalAnswered}I${qId}`
     }
 
-    // restartTest ALWAYS rebuilds from the original theme-filtered pool (baseQuestions),
-    // regardless of whether a "wrong questions" round happened before.
     function restartTest() {
       correctCount = 0
       totalAnswered = 0
       wrongQuestions = []
       usingWrongPool = false
+      awaitingNext = false
       updateWrongBtn()
       totalCount = parseInt(new URLSearchParams(location.search).get('count')) || 10
       questionsPool = buildPool(baseQuestions, totalCount)
@@ -210,10 +210,9 @@
       correctCount = 0
       totalAnswered = 0
       totalCount = wrongQuestions.length
-      // Use a separate pool for the "wrong questions" round; do NOT overwrite baseQuestions,
-      // so a subsequent restartTest() still generates a fresh list from all themes.
       allQuestions = [...wrongQuestions]
       usingWrongPool = true
+      awaitingNext = false
       wrongQuestions = []
       updateWrongBtn()
       questionsPool = buildPool(allQuestions, totalCount)
@@ -221,15 +220,13 @@
       loadNextFromPool()
     }
 
-    // --- state persistence (reload only) ---
-    // Only ids are persisted for collections; full question objects are resolved
-    // back via dataById on restore. This keeps the saved blob small and avoids
-    // duplicating/forking question data away from the canonical loaded dataset.
+    // --- state persistence ---
     function saveState() {
       try {
         const state = {
           seed, totalCount, correctCount, totalAnswered,
           usingWrongPool,
+          awaitingNext,   // сохраняем флаг
           questionsPoolIds: questionsPool.map(q => q.id),
           wrongQuestionIds: wrongQuestions.map(q => q.id),
           currentQuestionId: currentQuestion ? currentQuestion.id : null,
@@ -263,6 +260,7 @@
       correctCount = state.correctCount
       totalAnswered = state.totalAnswered
       usingWrongPool = !!state.usingWrongPool
+      awaitingNext = !!state.awaitingNext   // восстанавливаем флаг
 
       questionsPool = resolveIds(state.questionsPoolIds)
       wrongQuestions = resolveIds(state.wrongQuestionIds)
@@ -277,6 +275,12 @@
       updateStats()
 
       if (currentQuestion) {
+        // Если при сохранении ждали следующего вопроса — сразу его и грузим
+        if (awaitingNext) {
+          awaitingNext = false
+          loadNextFromPool(true)
+          return true
+        }
         document.getElementById('theme').textContent = currentQuestion.type || ''
         document.getElementById('question').textContent = currentQuestion.question
         renderAnswers(currentQuestion)
@@ -287,7 +291,6 @@
       return true
     }
 
-    // Detect reload vs fresh navigation/back-forward using the Navigation Timing API.
     function isReload() {
       try {
         const entries = performance.getEntriesByType('navigation')
@@ -295,7 +298,6 @@
           return entries[0].type === 'reload'
         }
       } catch (e) { /* fall through */ }
-      // Fallback for older browsers
       if (performance.navigation) {
         return performance.navigation.type === 1
       }
@@ -309,9 +311,6 @@
       fetch('./' + id_ + '.json')
         .then(res => res.json())
         .then(data => {
-          // Assign a stable id to every question (its position in the *unfiltered*
-          // dataset) so ids stay the same regardless of which themes are selected,
-          // then build the lookup map restoreState() resolves ids through.
           data.forEach((q, idx) => { if (q.id === undefined || q.id === null) q.id = idx })
           dataById = new Map(data.map(q => [q.id, q]))
 
@@ -324,11 +323,9 @@
           baseQuestions = filtered
 
           if (isReload() && restoreState()) {
-            // state restored, nothing else to do
             return
           }
 
-          // fresh visit (not a reload): clear any stale state for this id+seed and start over
           try { sessionStorage.removeItem(STORAGE_KEY) } catch (e) {}
           questionsPool = buildPool(baseQuestions, totalCount)
           updateStats()
