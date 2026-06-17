@@ -173,15 +173,15 @@
       const progressBar = document.getElementById('progressBar')
       const pct = totalAnswered === 0 ? 0 : Math.round(correctCount / totalAnswered * 100)
       progressBar.max = 1
+      const wrongCount = totalAnswered - correctCount
       if (totalCount >= 999999) {
-        const wrongCount = totalAnswered - correctCount
         animateProgressBarLerp(progressBar, totalAnswered === 0 ? 0 : correctCount / totalAnswered, 0.15)
         document.getElementById('stats').textContent =
-          `Всего ${totalAnswered}, Правильных ${correctCount}, Неправильных ${wrongCount}, Точность ${pct}%`
+          `${totalAnswered} - Правильных ${correctCount}, Неправильных ${wrongCount}, Точность ${pct}%`
       } else {
         animateProgressBarLerp(progressBar, totalAnswered / totalCount, 0.15)
         document.getElementById('stats').textContent =
-          `${totalAnswered} из ${totalCount} — ${pct}% (${correctCount}) правильных`
+          `${totalAnswered} / ${totalCount} - Правильных ${correctCount}, Неправильных ${wrongCount}, Точность ${pct}%`
       }
     }
 
