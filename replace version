@@ -1,0 +1,3 @@
+find . -type f -exec sed -i 's/v2b10/v2b11/g' {} +
+
+L to non linux users :3

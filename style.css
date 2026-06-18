@@ -1,4 +1,3 @@
-/* ===== ROOT ПЕРЕМЕННЫЕ ===== */
 :root {
     --text-brightness: 0.95;
     --bg-brightness: 0.70;
@@ -19,6 +18,7 @@
     --border-color: hsla(var(--primary-hue), 15%, calc(45% * var(--container-brightness)), 1);
     --accent-color: hsl(var(--primary-hue), var(--primary-saturation), var(--primary-lightness));
 
+    /* ANSWER STATES */
     --correct-hue: 140;
     --correct-saturation: 50%;
     --correct-bg-lightness: 18%;
@@ -30,32 +30,12 @@
     --wrong-bg-lightness: 18%;
     --wrong-border-lightness: 38%;
     --wrong-text-lightness: 82%;
-}
 
-#seedBadge {
-    position: fixed;
-    top: 4px;
-    left: 6px;
-    font-size: 20px;
-    line-height: 1;
-    color: rgba(128, 128, 128, 0.35);
-    font-family: monospace;
-    user-select: none;
-    pointer-events: none;
-    z-index: 9999;
-}
-
-version {
-  position: fixed;
-  top: 8px;
-  right: 8px;
-    font-size: 20px;
-    line-height: 1;
-    color: rgba(128, 128, 128, 0.35);
-    font-family: monospace;
-    user-select: none;
-    pointer-events: none;
-    z-index: 9999;
+    --unsure-hue: 50;
+    --unsure-saturation: 60%;
+    --unsure-bg-lightness: 18%;
+    --unsure-border-lightness: 45%;
+    --unsure-text-lightness: 85%;
 }
 
 @font-face {
@@ -78,13 +58,44 @@ body {
     box-sizing: border-box;
 }
 
-#theme {
-    font-size: 0.95em;
-    font-weight: 400;
-    text-align: center;
-    color: hsla(var(--primary-hue), 30%, calc(75% * var(--text-brightness)), 0.75);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
+h1, h2, h3, p {
+    margin: 0;
+}
+
+input[type="hidden"] {
+    display: none;
+}
+
+button.type:focus-visible,
+input:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+#seedBadge {
+    position: fixed;
+    top: 4px;
+    left: 6px;
+    font-size: 20px;
+    line-height: 1;
+    color: rgba(128, 128, 128, 0.35);
+    font-family: monospace;
+    user-select: none;
+    pointer-events: none;
+    z-index: 9999;
+}
+
+version {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    font-size: 20px;
+    line-height: 1;
+    color: rgba(128, 128, 128, 0.35);
+    font-family: monospace;
+    user-select: none;
+    pointer-events: none;
+    z-index: 9999;
 }
 
 .centered {
@@ -115,8 +126,13 @@ body {
     pointer-events: none;
 }
 
-h1, h2, h3, p {
-    margin: 0;
+#theme {
+    font-size: 0.95em;
+    font-weight: 400;
+    text-align: center;
+    color: hsla(var(--primary-hue), 30%, calc(75% * var(--text-brightness)), 0.75);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
 }
 
 h1 {
@@ -131,8 +147,35 @@ h2, h3 {
     color: var(--accent-color);
 }
 
-input[type="hidden"] {
-    display: none;
+#question {
+    font-size: 1.2em;
+    margin: 0;
+}
+
+progress {
+    width: 100%;
+    height: 12px;
+    border-radius: 2px;
+    border: none;
+    appearance: none;
+    -webkit-appearance: none;
+    background-color: var(--element-color);
+}
+
+progress::-webkit-progress-bar {
+    background-color: var(--element-color);
+    border-radius: 2px;
+}
+
+progress::-webkit-progress-value {
+    background-color: var(--accent-color);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+progress::-moz-progress-bar {
+    background-color: var(--accent-color);
+    border-radius: 2px;
 }
 
 #subjects {
@@ -211,48 +254,6 @@ input[type="number"][type="number"] {
     -moz-appearance: textfield;
 }
 
-button.type {
-    background-color: hsla(var(--primary-hue), calc(var(--primary-saturation) - 10%), calc(var(--primary-lightness) - 15%), 1);
-    color: var(--text-color);
-    border: none;
-    padding: 1em 2em;
-    border-radius: 2px;
-    font-size: 1em;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-@media (max-width: 768px) {
-    .centered {
-        padding: 2em 1.5em;
-        max-width: 100%;
-    }
-
-    button.type {
-        padding: 0.9em 1.8em;
-    }
-}
-
-@media (max-width: 480px) {
-    body {
-        padding: 0.5em;
-    }
-
-    .centered {
-        padding: 1.5em 1em;
-        gap: 1.2em;
-    }
-
-    input[type="number"] {
-        width: 70px;
-    }
-
-    button.type {
-        padding: 0.8em 1.5em;
-    }
-}
-
 select {
     background-color: var(--element-color);
     color: var(--text-color);
@@ -263,89 +264,6 @@ select {
     cursor: pointer;
     font-family: lib;
     flex: 1;
-}
-
-button.type:focus-visible,
-input:focus-visible {
-    outline: 2px solid var(--accent-color);
-    outline-offset: 2px;
-}
-
-progress {
-    width: 100%;
-    height: 12px;
-    border-radius: 2px;
-    border: none;
-    appearance: none;
-    -webkit-appearance: none;
-    background-color: var(--element-color);
-}
-
-progress::-webkit-progress-bar {
-    background-color: var(--element-color);
-    border-radius: 2px;
-}
-
-progress::-webkit-progress-value {
-    background-color: var(--accent-color);
-    border-radius: 2px;
-    transition: width 0.3s ease;
-}
-
-progress::-moz-progress-bar {
-    background-color: var(--accent-color);
-    border-radius: 2px;
-}
-
-button {
-    width: 100%;
-    padding: 0.9em 1em;
-    border: none;
-    border-radius: 2px;
-    font-family: lib, system-ui, sans-serif;
-    font-size: 1em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-#restartBtn {
-    background-color: hsla(var(--primary-hue), 40%, 45%, 1);
-    color: var(--text-color);
-}
-
-#restartBtn:hover {
-    background-color: hsla(var(--primary-hue), 40%, 52%, 1);
-}
-
-#wrongBtn {
-    background-color: hsla(var(--primary-hue), 40%, 45%, 1);
-    color: var(--text-color);
-}
-
-#wrongBtn:hover {
-    background-color: hsla(var(--primary-hue), 40%, 52%, 1);
-}
-
-#quitBtn {
-    background-color: var(--element-color);
-    color: var(--text-color);
-    border: 1px solid var(--border-color);
-}
-
-#quitBtn:hover {
-    background-color: hsla(var(--primary-hue), 20%, calc(32% * var(--container-brightness)), 1);
-}
-
-#question {
-    font-size: 1.2em;
-    margin: 0;
-}
-
-@media (max-width: 480px) {
-    #question {
-        font-size: 1em;
-    }
 }
 
 #answers {
@@ -389,6 +307,95 @@ label.answer-btn.wrong {
     color: hsl(var(--wrong-hue), var(--wrong-saturation), var(--wrong-text-lightness));
 }
 
+.answer-btn.unsure {
+    background-color: hsl(var(--unsure-hue), var(--unsure-saturation), var(--unsure-bg-lightness)) !important;
+    border-color: hsl(var(--unsure-hue), var(--unsure-saturation), var(--unsure-border-lightness)) !important;
+    color: hsl(var(--unsure-hue), var(--unsure-saturation), var(--unsure-text-lightness)) !important;
+}
+
+button {
+    width: 100%;
+    padding: 0.9em 1em;
+    border: none;
+    border-radius: 2px;
+    font-family: lib, system-ui, sans-serif;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
 button.type {
+    background-color: hsla(var(--primary-hue), calc(var(--primary-saturation) - 10%), calc(var(--primary-lightness) - 15%), 1);
+    color: var(--text-color);
+    border: none;
+    padding: 1em 2em;
+    border-radius: 2px;
+    font-size: 1em;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
     margin-top: 1em;
+}
+
+#restartBtn {
+    background-color: hsla(var(--primary-hue), 40%, 45%, 1);
+    color: var(--text-color);
+}
+
+#restartBtn:hover {
+    background-color: hsla(var(--primary-hue), 40%, 52%, 1);
+}
+
+#wrongBtn {
+    background-color: hsla(var(--primary-hue), 40%, 45%, 1);
+    color: var(--text-color);
+}
+
+#wrongBtn:hover {
+    background-color: hsla(var(--primary-hue), 40%, 52%, 1);
+}
+
+#quitBtn {
+    background-color: var(--element-color);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+#quitBtn:hover {
+    background-color: hsla(var(--primary-hue), 20%, calc(32% * var(--container-brightness)), 1);
+}
+
+@media (max-width: 768px) {
+    .centered {
+        padding: 2em 1.5em;
+        max-width: 100%;
+    }
+
+    button.type {
+        padding: 0.9em 1.8em;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 0.5em;
+    }
+
+    .centered {
+        padding: 1.5em 1em;
+        gap: 1.2em;
+    }
+
+    #question {
+        font-size: 1em;
+    }
+
+    input[type="number"] {
+        width: 70px;
+    }
+
+    button.type {
+        padding: 0.8em 1.5em;
+    }
 }

@@ -10,13 +10,14 @@
     let id_ = params.get('id')
     let themes = params.get('themes')
     let totalCount = parseInt(params.get('count')) || 10
+    let curParam = params.get('cur') // Параметр для одиночного вопроса по ID
 
     // --- seed handling ---
     let seedParam = params.get('seed')
     let seed = seedParam !== null && seedParam !== '' ? parseInt(seedParam) : Math.floor(Math.random() * 1000000)
     if (!Number.isFinite(seed)) seed = Math.floor(Math.random() * 1000000)
 
-    if (seedParam === null || seedParam === '') {
+    if ((seedParam === null || seedParam === '') && !curParam) {
       params.set('seed', seed)
       history.replaceState(null, '', `${location.pathname}?${params.toString()}`)
     }
@@ -32,6 +33,7 @@
     let totalAnswered = 0
     let usingWrongPool = false
     let awaitingNext = false   // флаг: ответ уже дан, ждём следующего вопроса
+    let nextQuestionTimeout = null // Сюда сохраняем ID активного таймера перехода
 
     const STORAGE_KEY = `quizState:${id_}:${seed}`
 
@@ -56,6 +58,12 @@
     }
 
     function buildPool(sourceQuestions, count) {
+      // Если передан curParam, пулом становится только один этот вопрос
+      if (curParam !== null && curParam !== '') {
+        const targetQ = sourceQuestions.find(q => String(q.id) === String(curParam))
+        return targetQ ? [targetQ] : []
+      }
+
       let pool
       if (count >= 999999) {
         pool = shuffle(sourceQuestions)
@@ -82,14 +90,15 @@
       const answersDiv = document.getElementById('answers')
       answersDiv.innerHTML = ''
       const shuffledAnswers = shuffle(q.answers)
-      for (let a of shuffledAnswers) {
+      shuffledAnswers.forEach((a, index) => {
         const label = document.createElement('label')
         label.setAttribute('data-answer', a)
+        label.setAttribute('data-idx', index)
         label.className = 'answer-btn'
         label.textContent = a
         label.addEventListener('click', () => pickAnswer(a))
         answersDiv.appendChild(label)
-      }
+      })
     }
 
     function startTimerBar(ms) {
@@ -112,7 +121,7 @@
     function loadNextFromPool(skipSave) {
       resetTimerBar()
       if (questionsPool.length === 0) {
-        if (totalCount >= 999999) {
+        if (totalCount >= 999999 && !curParam) {
           questionsPool = shuffle(usingWrongPool ? allQuestions : baseQuestions)
         } else {
           document.getElementById('question').textContent = 'Тест завершён'
@@ -139,13 +148,28 @@
     function pickAnswer(chosen) {
       const allLabels = document.querySelectorAll('#answers label')
       allLabels.forEach(label => label.classList.add('disabled'))
+
+      // Проверяем, есть ли дубликаты правильного ответа в массиве
+      const answersArr = currentQuestion ? currentQuestion.answers : []
+      const hasDuplicates = answersArr.filter(item => item === correctAnswer).length > 1
+
+      const isCorrectChoice = (chosen === correctAnswer)
+
       allLabels.forEach(label => {
         const val = label.getAttribute('data-answer')
-        if (val === correctAnswer) label.classList.add('correct')
-        if (val === chosen && val !== correctAnswer) label.classList.add('wrong')
+        
+        if (hasDuplicates && val === correctAnswer) {
+          // Если есть дубликаты правильного ответа — оба подсвечиваем желтым
+          label.classList.add('unsure')
+        } else {
+          // Стандартная подсветка
+          if (val === correctAnswer) label.classList.add('correct')
+          if (val === chosen && val !== correctAnswer) label.classList.add('wrong')
+        }
       })
+
       totalAnswered++
-      if (chosen === correctAnswer) {
+      if (isCorrectChoice) {
         correctCount++
       } else {
         if (!wrongQuestions.find(q => q.id === currentQuestion.id)) {
@@ -154,11 +178,15 @@
         updateWrongBtn()
       }
       updateStats()
-      awaitingNext = true   // ответ дан — при перезагрузке сразу следующий
+      awaitingNext = true
       saveState()
       const delay = localStorage.getItem('fastMode') === 'true' ? 700 : 3000
       startTimerBar(delay)
-      setTimeout(() => {
+      
+      // Сбрасываем предыдущий таймер, если вдруг остался
+      if (nextQuestionTimeout) clearTimeout(nextQuestionTimeout)
+      
+      nextQuestionTimeout = setTimeout(() => {
         awaitingNext = false
         loadNextFromPool()
       }, delay)
@@ -180,7 +208,7 @@
 
     function updateWrongBtn() {
       const btn = document.getElementById('wrongBtn')
-      if (wrongQuestions.length > 0) {
+      if (wrongQuestions.length > 0 && !curParam) {
         btn.textContent = `Повторить проблемные вопросы (${wrongQuestions.length})`
         btn.style.display = 'inline-block'
       } else {
@@ -212,20 +240,49 @@
     }
 
     function restartTest() {
+      // КРИТИЧНО: Убиваем висящий таймер автоперехода, чтобы он не скипал новый первый вопрос
+      if (nextQuestionTimeout) {
+        clearTimeout(nextQuestionTimeout)
+        nextQuestionTimeout = null
+      }
+
       correctCount = 0
       totalAnswered = 0
       wrongQuestions = []
       usingWrongPool = false
       awaitingNext = false
       updateWrongBtn()
-      totalCount = parseInt(new URLSearchParams(location.search).get('count')) || 10
+      
+      const currentParams = new URLSearchParams(location.search)
+      
+      // Генерируем новый сид и обновляем адресную строку (если это не одиночный режим cur)
+      if (curParam === null || curParam === '') {
+        seed = Math.floor(Math.random() * 1000000)
+        rand = mulberry32(seed)
+        
+        currentParams.set('seed', seed)
+        history.replaceState(null, '', `${location.pathname}?${currentParams.toString()}`)
+      }
+      
+      if (curParam !== null && curParam !== '') {
+        totalCount = 1
+      } else {
+        totalCount = parseInt(currentParams.get('count')) || 10
+      }
+      
       questionsPool = buildPool(baseQuestions, totalCount)
       updateStats()
       loadNextFromPool()
     }
 
     function restartWrong() {
-      if (wrongQuestions.length === 0) return
+      // Тоже сбрасываем таймер при уходе на круг работы над ошибками
+      if (nextQuestionTimeout) {
+        clearTimeout(nextQuestionTimeout)
+        nextQuestionTimeout = null
+      }
+
+      if (wrongQuestions.length === 0 || curParam) return
       correctCount = 0
       totalAnswered = 0
       totalCount = wrongQuestions.length
@@ -245,7 +302,7 @@
         const state = {
           seed, totalCount, correctCount, totalAnswered,
           usingWrongPool,
-          awaitingNext,   // сохраняем флаг
+          awaitingNext,
           questionsPoolIds: questionsPool.map(q => q.id),
           wrongQuestionIds: wrongQuestions.map(q => q.id),
           currentQuestionId: currentQuestion ? currentQuestion.id : null,
@@ -260,6 +317,7 @@
     }
 
     function restoreState() {
+      if (curParam) return false // В режиме ?cur=id сессию не восстанавливаем, чтобы всегда начинать с этого вопроса
       let raw
       try {
         raw = sessionStorage.getItem(STORAGE_KEY)
@@ -279,7 +337,7 @@
       correctCount = state.correctCount
       totalAnswered = state.totalAnswered
       usingWrongPool = !!state.usingWrongPool
-      awaitingNext = !!state.awaitingNext   // восстанавливаем флаг
+      awaitingNext = !!state.awaitingNext
 
       questionsPool = resolveIds(state.questionsPoolIds)
       wrongQuestions = resolveIds(state.wrongQuestionIds)
@@ -294,7 +352,6 @@
       updateStats()
 
       if (currentQuestion) {
-        // Если при сохранении ждали следующего вопроса — сразу его и грузим
         if (awaitingNext) {
           awaitingNext = false
           loadNextFromPool(true)
@@ -341,6 +398,10 @@
           allQuestions = filtered
           baseQuestions = filtered
 
+          if (curParam !== null && curParam !== '') {
+            totalCount = 1
+          }
+
           if (isReload() && restoreState()) {
             return
           }
@@ -355,7 +416,7 @@
 </head>
 <body>
   <seed id="seedBadge"></seed>
-  <version id="versionBadge">v2b10</version>
+  <version id="versionBadge">v2b11</version>
   <div class="centered">
     <div id="timerBar"></div>
     <p id="theme"></p>
